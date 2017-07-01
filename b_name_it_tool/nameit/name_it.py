@@ -1,5 +1,6 @@
 from PySide2 import QtWidgets as qw, QtCore as qc, QtGui as qg
-
+import utils.names as names
+import maya.cmds as cmds
 # maya 2017
 
 # global variable for our instance. Using this and create/delete functions prevents multiple
@@ -49,9 +50,15 @@ class NameIt(qw.QDialog):
 
         # rename text widgets
         rename_text_lb = qw.QLabel('New Name:')
-        rename_le = qw.QLineEdit()
+        self.rename_le = qw.QLineEdit()
         rename_text_layout.addWidget(rename_text_lb)
-        rename_text_layout.addWidget(rename_le)
+        rename_text_layout.addWidget(self.rename_le)
+
+        # use regular expressions to prevent typing symbols into the rename le, which aren't allowed in Maya names
+        reg_ex_ren = qc.QRegExp("^(?!^_)[a-zA-Z_]+")
+        # second argument is the parent, which we assign just to keep it alive, otherwise it may be deleted right after
+        text_validator_rename = qg.QRegExpValidator(reg_ex_ren, self.rename_le)
+        self.rename_le.setValidator(text_validator_rename)
 
         # add the custom divider line
         rename_widget.layout().addLayout(SplitterLayout())
@@ -65,12 +72,12 @@ class NameIt(qw.QDialog):
 
         # rename multiples widgets
         rename_mult_method_lb = qw.QLabel('Multiples Naming Method:')
-        rename_mult_method_combo = qw.QComboBox()
-        rename_mult_method_combo.addItem('Numbers (0-9)')
-        rename_mult_method_combo.addItem('Letters (a-z)')
-        rename_mult_method_combo.setFixedWidth(120)  # otherwise will expand to fill space
+        self.rename_mult_method_combo = qw.QComboBox()
+        self.rename_mult_method_combo.addItem('Numbers (0-9)')
+        self.rename_mult_method_combo.addItem('Letters (a-z)')
+        self.rename_mult_method_combo.setFixedWidth(120)  # otherwise will expand to fill space
         rename_mult_layout.addWidget(rename_mult_method_lb)
-        rename_mult_layout.addWidget(rename_mult_method_combo)
+        rename_mult_layout.addWidget(self.rename_mult_method_combo)
 
         # rename multiples options layout
         # The options will change depending on what is selected in the combo box above
@@ -82,31 +89,31 @@ class NameIt(qw.QDialog):
 
         # rename multiples options widgets
         # numbers option from rename_multi_method_combo
-        frame_pad_lb = qw.QLabel('No. Padding:')
-        frame_pad_spin = qw.QSpinBox()
-        frame_pad_spin.setFixedWidth(40)
-        frame_pad_spin.setMinimum(0)
-        frame_pad_spin.setMaximum(10)
+        self.frame_pad_lb = qw.QLabel('No. Padding:')
+        self.frame_pad_spin = qw.QSpinBox()
+        self.frame_pad_spin.setFixedWidth(40)
+        self.frame_pad_spin.setMinimum(0)
+        self.frame_pad_spin.setMaximum(10)
 
         # letters option from rename_multi_method_combo
-        lower_radio = qw.QRadioButton('Lowercase')
-        upper_radio = qw.QRadioButton('Uppercase')
+        self.lower_radio = qw.QRadioButton('Lowercase')
+        self.upper_radio = qw.QRadioButton('Uppercase')
         # since the numbers option is the default, turn these off for now
-        lower_radio.setVisible(False)
-        upper_radio.setVisible(False)
-        lower_radio.setFixedHeight(19)
-        upper_radio.setFixedHeight(19)
-        lower_radio.setChecked(True)  # default selected option
+        self.lower_radio.setVisible(False)
+        self.upper_radio.setVisible(False)
+        self.lower_radio.setFixedHeight(19)
+        self.upper_radio.setFixedHeight(19)
+        self.lower_radio.setChecked(True)  # default selected option
 
         # add to multi options layout
         # left side options
-        multi_options_layout.addWidget(frame_pad_lb)
-        multi_options_layout.addWidget(lower_radio)
+        multi_options_layout.addWidget(self.frame_pad_lb)
+        multi_options_layout.addWidget(self.lower_radio)
         # use an expanding spacer to push each one to the left/right
         multi_options_layout.addSpacerItem(qw.QSpacerItem(5, 5, qw.QSizePolicy.Expanding))
         # right side options
-        multi_options_layout.addWidget(frame_pad_spin)
-        multi_options_layout.addWidget(upper_radio)
+        multi_options_layout.addWidget(self.frame_pad_spin)
+        multi_options_layout.addWidget(self.upper_radio)
 
         # add the custom divider line
         rename_widget.layout().addLayout(SplitterLayout())
@@ -119,22 +126,24 @@ class NameIt(qw.QDialog):
         rename_widget.layout().addLayout(fix_layout)
 
         # prefix and suffix checks/options widgets
-        prefix_check = qw.QCheckBox('Prefix:')
-        prefix_le = qw.QLineEdit()
-        prefix_le.setEnabled(False)  # don't allow typing into line edit if not checked
-        prefix_le.setFixedWidth(85)
+        self.prefix_check = qw.QCheckBox('Prefix:')
+        self.prefix_le = qw.QLineEdit()
+        self.prefix_le.setEnabled(False)  # don't allow typing into line edit if not checked
+        self.prefix_le.setFixedWidth(85)
+        self.prefix_le.setValidator(text_validator_rename)  # use the same validator, don't need a new parent
 
-        suffix_check = qw.QCheckBox('Suffix:')
-        suffix_le = qw.QLineEdit()
-        suffix_le.setEnabled(False)  # don't allow typing into line edit if not checked
-        suffix_le.setFixedWidth(85)
+        self.suffix_check = qw.QCheckBox('Suffix:')
+        self.suffix_le = qw.QLineEdit()
+        self.suffix_le.setEnabled(False)  # don't allow typing into line edit if not checked
+        self.suffix_le.setFixedWidth(85)
+        self.suffix_le.setValidator(text_validator_rename)
 
         # add to fix layout
-        fix_layout.addWidget(prefix_check)
-        fix_layout.addWidget(prefix_le)
+        fix_layout.addWidget(self.prefix_check)
+        fix_layout.addWidget(self.prefix_le)
         fix_layout.addSpacerItem(qw.QSpacerItem(5, 5, qw.QSizePolicy.Expanding))
-        fix_layout.addWidget(suffix_check)
-        fix_layout.addWidget(suffix_le)
+        fix_layout.addWidget(self.suffix_check)
+        fix_layout.addWidget(self.suffix_le)
 
         # add the custom divider line
         rename_widget.layout().addLayout(SplitterLayout())
@@ -147,13 +156,13 @@ class NameIt(qw.QDialog):
         rename_widget.layout().addLayout(rename_button_layout)
 
         # rename button widgets
-        rename_lb = qw.QLabel('e.g.')
+        self.rename_lb = qw.QLabel('e.g.')
         rename_btn = qw.QPushButton('Rename')
         rename_btn.setFixedHeight(20)
         rename_btn.setFixedWidth(55)
 
         # add to rename button layout
-        rename_button_layout.addWidget(rename_lb)
+        rename_button_layout.addWidget(self.rename_lb)
         rename_button_layout.addWidget(rename_btn)
 
         # REPLACE WIDGET
@@ -180,11 +189,16 @@ class NameIt(qw.QDialog):
         # replace widgets
         replace_lb = qw.QLabel('Find:')
         replace_lb.setFixedWidth(55)
-        replace_le = qw.QLineEdit()
+        self.replace_le = qw.QLineEdit()
+
+        # find/replace validator; simpler than rename one because we may search for strings within strings
+        reg_ex_rep = qc.QRegExp("[a-zA-Z_]+")
+        text_validator_replace = qg.QRegExpValidator(reg_ex_rep, self.replace_le)
+        self.replace_le.setValidator(text_validator_replace)
 
         # add to replace layout
         replace_layout.addWidget(replace_lb)
-        replace_layout.addWidget(replace_le)
+        replace_layout.addWidget(self.replace_le)
 
         # replace with layout
         with_layout = qw.QHBoxLayout()
@@ -196,11 +210,12 @@ class NameIt(qw.QDialog):
         # with widgets
         with_lb = qw.QLabel('Replace:')
         with_lb.setFixedWidth(55)
-        with_le = qw.QLineEdit()
+        self.with_le = qw.QLineEdit()
+        self.with_le.setValidator(text_validator_replace)
 
         # add to replace with layout
         with_layout.addWidget(with_lb)
-        with_layout.addWidget(with_le)
+        with_layout.addWidget(self.with_le)
 
         # add the custom divider line
         replace_widget.layout().addLayout(SplitterLayout())
@@ -214,9 +229,9 @@ class NameIt(qw.QDialog):
 
         # selection widgets
         selection_mode_lb = qw.QLabel('Selection Mode:')
-        all_radio = qw.QRadioButton('All')
-        all_radio.setFixedHeight(19)
-        all_radio.setChecked(True)
+        self.all_radio = qw.QRadioButton('All')
+        self.all_radio.setFixedHeight(19)
+        self.all_radio.setChecked(True)
         selected_radio = qw.QRadioButton('Selected')
         selected_radio.setFixedHeight(19)
 
@@ -224,7 +239,7 @@ class NameIt(qw.QDialog):
         selection_layout.addWidget(selection_mode_lb)
         spacer_item = qw.QSpacerItem(5, 5, qw.QSizePolicy.Expanding)
         selection_layout.addSpacerItem(spacer_item)
-        selection_layout.addWidget(all_radio)
+        selection_layout.addWidget(self.all_radio)
         selection_layout.addWidget(selected_radio)
 
         # add the custom divider line
@@ -246,9 +261,108 @@ class NameIt(qw.QDialog):
         # add to replace button layout
         replace_btn_layout.addWidget(replace_btn)
 
+        # ------------------------------------------------------------------------#
+        # good practice to put all modifiers and connections in one place
+
+        # connect modifiers
+        #
+        self.prefix_check.stateChanged.connect(self.prefix_le.setEnabled)
+        self.suffix_check.stateChanged.connect(self.suffix_le.setEnabled)
+        self.prefix_check.stateChanged.connect(self._update_example_rename)
+        self.suffix_check.stateChanged.connect(self._update_example_rename)
+
+        self.rename_mult_method_combo.currentIndexChanged.connect(self._toggle_multi_naming_method)
+        self.rename_mult_method_combo.currentIndexChanged.connect(self._update_example_rename)
+        self.lower_radio.clicked.connect(self._update_example_rename)
+        self.upper_radio.clicked.connect(self._update_example_rename)
+        self.frame_pad_spin.valueChanged.connect(self._update_example_rename)
+
+        self.rename_le.textChanged.connect(self._update_example_rename)
+        self.prefix_le.textChanged.connect(self._update_example_rename)
+        self.suffix_le.textChanged.connect(self._update_example_rename)
+
+        rename_btn.clicked.connect(self.rename)
+        replace_btn.clicked.connect(self.replace)
+
+        self._update_example_rename()
+
+    # ------------------------------------------------------------------------#
+
+    # create a function to facilitate the multi options switching
+    def _toggle_multi_naming_method(self, index):
+        self.lower_radio.setVisible(index)
+        self.upper_radio.setVisible(index)
+        self.frame_pad_lb.setVisible(not (index))
+        self.frame_pad_spin.setVisible(not (index))
+
+    # ------------------------------------------------------------------------#
+
+    def _get_rename_settings(self):
+        text = str(self.rename_le.text()).strip()  # text is a Qt string, change to python string
+        naming_method = bool(self.rename_mult_method_combo.currentIndex())  # change Qt bool to python bool
+
+        padding = 0;
+        upper = True
+        if naming_method == 0:  # using numbers
+            padding = self.frame_pad_spin.value()
+        else:  # using letters
+            upper = self.upper_radio.isChecked()
+
+        prefix = '';
+        suffix = ''
+        if self.prefix_check.isChecked():
+            prefix = str(self.prefix_le.text()).strip()
+        if self.suffix_check.isChecked():
+            suffix = str(self.suffix_le.text()).strip()
+
+        # return in order the rename function is expecting arguments
+        return text, prefix, suffix, padding, naming_method, upper
+
+    # ------------------------------------------------------------------------#
+
+    def _update_example_rename(self):
+        example_text = ''
+
+        text, prefix, suffix, padding, naming_method, upper = self._get_rename_settings()
+
+        if not text:  # keep default example
+            self.rename_lb.setText('<font color=#646464>e.g.</font>')  # can use html styling to format text
+            return
+
+        if prefix:  example_text += '%s_' % prefix
+        example_text += '%s_' % text
+
+        if naming_method:
+            if upper:
+                example_text += 'A'
+            else:
+                example_text += 'a'
+        else:
+            example_text += (padding * '0') + '1'
+
+        if suffix: example_text += '_%s' % suffix
+
+        self.rename_lb.setText('<font color=#646464>e.g. \'%s\'</font>' % example_text)
+
+    # ------------------------------------------------------------------------#
+
+    def rename(self):
+        names.rename(cmds.ls(sl=True), *self._get_rename_settings())
+
+    # ------------------------------------------------------------------------#
+
+    def replace(self):
+        replace_text = str(self.replace_le.text()).strip()
+        with_text = str(self.with_le.text()).strip()
+
+        if self.all_radio.isChecked():
+            nodes = cmds.ls()
+        else:
+            nodes = cmds.ls(sl=True)
+
+        names.find_replace(nodes, replace_text, with_text)
 
 # ------------------------------------------------------------------------#
-
 # For the splitter we make our own widget that inherits from QWidget class
 # We can customize it to make a widget that suits our needs
 class Splitter(qw.QWidget):
@@ -320,6 +434,7 @@ class SplitterLayout(qw.QHBoxLayout):
         splitter.setFixedHeight(1)
 
         self.addWidget(splitter)
+
 
 # ------------------------------------------------------------------------#
 
